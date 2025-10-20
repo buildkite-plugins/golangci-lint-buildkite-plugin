@@ -1,217 +1,283 @@
-# Template Buildkite Plugin [![Build status](https://badge.buildkite.com/d673030645c7f3e7e397affddd97cfe9f93a40547ed17b6dc5.svg)](https://buildkite.com/buildkite/plugins-template)
+# golangci-lint Buildkite Plugin
 
-A Buildkite plugin for something awesome
+A Buildkite plugin for running [golangci-lint](https://golangci-lint.run/) to lint and format Go code in your CI/CD pipeline.
 
-## Getting started
+## Quick Start
 
-1. **Update plugin name**: Change `YOUR_PLUGIN_NAME` in `lib/plugin.bash`
-2. **Customize configuration**: Modify `plugin.yml` for your options
-3. **Add your logic**: Implement features in `hooks/command`
-4. **Use modules**: For complex plugins, add modules in `lib/modules/`
-5. **Test thoroughly**: Add tests in `tests/` directory
+Add the plugin to your Buildkite pipeline:
 
-## Architecture
+```yaml
+steps:
+  - label: ":golang: Lint"
+    plugins:
+      - golangci-lint#v1.0.0: ~
+```
 
-- **`hooks/command`**: Main execution logic
-- **`lib/shared.bash`**: Common utilities and logging
-- **`lib/plugin.bash`**: Configuration reading helpers
-- **`lib/modules/`**: Optional feature modules for complex plugins
-- **`hooks/environment`**: Optional early setup (for complex plugins only)
+This will run golangci-lint with default settings using Docker.
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development guidelines.
+## Configuration Options
 
-## Options
+All options are optional unless specified otherwise.
 
-These are all the options available to configure this plugin's behaviour.
+### Docker Options
 
-### Required
+#### `use_docker` (boolean)
 
-#### `mandatory` (string)
+Use Docker to run golangci-lint. If set to `false`, golangci-lint must be available in `$PATH`.
 
-A great description of what this is supposed to do.
+**Default:** `true`
 
-### Optional
+#### `docker_image` (string)
 
-#### `optional` (string)
+Docker image to use for golangci-lint.
 
-Describe how the plugin behaviour changes if this option is not specified, allowed values and its default.
+**Default:** `golangci/golangci-lint:latest`
 
-#### `numbers` (array)
+### Linter Options
 
-An array of numeric values for processing. Each element must be a number.
+#### `ignore_linter_errors` (boolean)
 
-#### `enabled` (boolean)
+Whether to ignore linter errors and allow the step to pass even if issues are found.
 
-Enable or disable a specific feature. Defaults to `false`.
+**Default:** `false`
 
-#### `config` (object)
+#### `create_annotations` (boolean)
 
-Configuration object with key-value pairs.
+Create Buildkite annotations to visibly display the outcome of the linter.
 
-##### `config.host` (string, required)
+**Default:** `true`
 
-The hostname or IP address to connect to.
+#### `timeout` (string)
 
-##### `config.port` (number, optional)
+Timeout duration for the linter run command (e.g., `5m`, `1h`, `30s`). Maps to `--timeout` flag.
 
-The port number to use for the connection. Defaults to `1234`.
+**Example:** `5m`
 
-##### `config.ssl` (boolean, optional)
+#### `config` (string)
 
-Whether to use SSL/TLS for the connection. Defaults to `true`.
+Path to golangci-lint config file (`.golangci.yml`, `.golangci.yaml`, `.golangci.toml`, `.golangci.json`). Maps to `--config` flag.
 
-#### `timeout` (number)
+**Example:** `.golangci.yml`
 
-Timeout value in seconds. Must be between 1 and 60 seconds.
+#### `issues_exit_code` (number)
 
+Exit code when issues are found. Allows for control of soft_fail steps. Maps to `--issues-exit-code` flag.
+
+**Default:** `1`
+
+#### `cache_dir` (string)
+
+Directory to use for golangci-lint cache. Maps to `--cache-dir` flag.
+
+See [golangci-lint cache documentation](https://golangci-lint.run/docs/configuration/cli/#cache) for more details.
+
+**Example:** `.cache/golangci-lint`
+
+### Formatter Options
+
+#### `run_formatter` (boolean)
+
+Run `golangci-lint fmt --diff` to check Go source file formatting.
+
+**Default:** `false`
+
+#### `ignore_formatter_errors` (boolean)
+
+Whether to ignore formatter errors and allow the step to pass. Only applies if `run_formatter` is `true`.
+
+**Default:** `false`
+
+### Other Options
+
+#### `working_directory` (string)
+
+Working directory to run golangci-lint in.
+
+**Default:** Current directory
 
 ## Examples
 
-### Basic usage
+### Basic usage with defaults
 
-Minimal configuration with just the required option:
-
-```yaml
-steps:
-  - label: "🔨 Basic plugin usage"
-    command: "echo processing"
-    plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
-```
-
-### With optional parameters
-
-Adding optional configuration:
+Minimal configuration using Docker with default settings:
 
 ```yaml
 steps:
-  - label: "🔨 Plugin with options"
-    command: "echo processing with options"
+  - label: ":golang: Lint Go code"
     plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
-          optional: "custom-value"
-          timeout: 45
+      - golangci-lint#v1.0.0: ~
 ```
 
-### Array processing
+### With custom timeout and config
 
-Handling arrays of values:
+Using a custom configuration file and timeout:
 
 ```yaml
 steps:
-  - label: "🔨 Array processing"
-    command: "echo processing numbers"
+  - label: ":golang: Lint Go code"
     plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
-          numbers: [1, 2, 3, 5, 8]
+      - golangci-lint#v1.0.0:
+          timeout: "5m"
+          config: ".golangci.yml"
 ```
 
-### Feature toggles
+### Using local golangci-lint binary
 
-Using boolean flags to control behavior:
+Run golangci-lint without Docker (requires golangci-lint in PATH):
 
 ```yaml
 steps:
-  - label: "🔨 Feature enabled"
-    command: "echo enhanced processing"
+  - label: ":golang: Lint Go code"
     plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
-          enabled: true
+      - golangci-lint#v1.0.0:
+          use_docker: false
 ```
 
-### Complex configuration
+### With formatter check
 
-Using nested configuration objects:
+Enable formatting check in addition to linting:
 
 ```yaml
 steps:
-  - label: "🔨 Complex config"
-    command: "echo connecting to service"
+  - label: ":golang: Lint and format check"
     plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
-          config:
-            host: "api.example.com"
-            port: 8080
-            ssl: false
+      - golangci-lint#v1.0.0:
+          run_formatter: true
 ```
 
-### Secrets and environment variables
+### Soft fail (ignore errors)
 
-Secure handling of secrets using environment variables:
+Allow the step to pass even if linter finds issues:
 
 ```yaml
 steps:
-  - label: "🔨 Using secrets"
-    command: "echo authenticated processing"
+  - label: ":golang: Lint Go code (soft fail)"
     plugins:
-      - secrets#v1.0.0:
-          MY_SECRET_TOKEN: secret_key_in_buildkite_secrets
-      - template#v1.0.0:
-          mandatory: "required-value"
-          optional: "MY_SECRET_TOKEN"  # Pass env var name instead of secret value
+      - golangci-lint#v1.0.0:
+          ignore_linter_errors: true
 ```
 
-In the plugin code, use `${!config_value}` to get the secret value from the environment variable name.
+### Custom Docker image
+
+Use a specific version of golangci-lint:
+
+```yaml
+steps:
+  - label: ":golang: Lint Go code"
+    plugins:
+      - golangci-lint#v1.0.0:
+          docker_image: "golangci/golangci-lint:v1.55.2"
+```
+
+### With custom cache directory
+
+Configure a custom cache directory for faster subsequent runs:
+
+```yaml
+steps:
+  - label: ":golang: Lint Go code"
+    plugins:
+      - golangci-lint#v1.0.0:
+          cache_dir: ".cache/golangci-lint"
+```
+
+### Without annotations
+
+Disable Buildkite annotations:
+
+```yaml
+steps:
+  - label: ":golang: Lint Go code"
+    plugins:
+      - golangci-lint#v1.0.0:
+          create_annotations: false
+```
+
+### Complete example with all options
+
+Full configuration showing all available options:
+
+```yaml
+steps:
+  - label: ":golang: Comprehensive lint"
+    plugins:
+      - golangci-lint#v1.0.0:
+          use_docker: true
+          docker_image: "golangci/golangci-lint:v1.55.2"
+          timeout: "10m"
+          config: ".golangci.yml"
+          issues_exit_code: 1
+          cache_dir: ".cache/golangci-lint"
+          ignore_linter_errors: false
+          create_annotations: true
+          run_formatter: true
+          ignore_formatter_errors: false
+          working_directory: "."
+```
 
 ### Debug mode
 
-Enabling verbose logging for troubleshooting:
+Enable verbose logging for troubleshooting:
 
 ```yaml
 steps:
-  - label: "🔨 Debug mode"
-    command: "echo detailed processing"
+  - label: ":golang: Lint Go code (debug)"
     plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
+      - golangci-lint#v1.0.0: ~
     env:
       BUILDKITE_PLUGIN_DEBUG: "true"
 ```
 
-## Compatibility
+## Annotations
 
-| Elastic Stack | Agent Stack K8s | Hosted (Mac) | Hosted (Linux) | Notes |
-| :-----------: | :-------------: | :----------: | :------------: | :---- |
-|       ?       |        ?        |      ?       |       ?        | n/a   |
+When `create_annotations` is enabled (default), the plugin creates Buildkite annotations to display:
 
-- ✅ Fully supported (all combinations of attributes have been tested to pass)
-- ⚠️ Partially supported (some combinations cause errors/issues)
-- ❌ Not supported
+- **Success**: Green annotation showing the linter passed
+- **Errors**: Red annotation with the full linter output showing issues found
 
-## 👩‍💻 Contributing
+If `run_formatter` is enabled, separate annotations are created for:
 
-1. Follow the patterns established in this template
-2. Add tests for new functionality
-3. Update documentation for any new options
-4. Ensure shellcheck passes (fix issues, don't just disable checks - disabling should be done very seldomly and with team documentation/agreement)
-5. Test with the plugin tester
+- Linter results (context: `golangci-lint`)
+- Formatter results (context: `golangci-lint-fmt`)
 
-## Developing
+## Exit Codes
 
-**Run all tests:**
+The plugin respects golangci-lint exit codes:
+
+- **0**: No issues found
+- **1** (default): Issues found
+- **Custom**: Set via `issues_exit_code` option
+
+When `ignore_linter_errors` or `ignore_formatter_errors` is `true`, the step will always exit with 0 regardless of issues found.
+
+## Development
+
+### Run tests
 
 ```bash
 docker run -it --rm -v "$PWD:/plugin:ro" buildkite/plugin-tester
 ```
 
-**Validate plugin structure:**
+### Validate plugin structure
 
 ```bash
-# Replace 'your-plugin-name' with your actual plugin name
-docker run -it --rm -v "$PWD:/plugin:ro" buildkite/plugin-linter --id your-plugin-name --path /plugin
+docker run -it --rm -v "$PWD:/plugin:ro" buildkite/plugin-linter --id golangci-lint --path /plugin
 ```
 
-**Run shellcheck:**
+### Run shellcheck
 
 ```bash
-shellcheck hooks/* tests/* lib/*.bash lib/modules/* lib/providers/*
+shellcheck hooks/* tests/* lib/*.bash
 ```
 
-## 📜 License
+## Contributing
 
-The package is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
