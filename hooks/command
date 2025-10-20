@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -10,23 +10,262 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/plugin.bash
 . "$DIR/../lib/plugin.bash"
 
-# Global variable used by plugin_read_list_into_result
-result=()
+# Global variables
+LINTER_OUTPUT_FILE="/tmp/golangci-lint-output-$$"
+LINTER_EXIT_CODE=0
+FORMATTER_OUTPUT_FILE="/tmp/golangci-lint-fmt-output-$$"
+FORMATTER_EXIT_CODE=0
 
-# Optional: Load feature modules for complex plugins
-# shellcheck source=lib/modules/example.bash
-# . "$DIR/../lib/modules/example.bash"
+# Clean up temporary files on exit
+# shellcheck disable=SC2317
+cleanup() {
+  rm -f "${LINTER_OUTPUT_FILE}" "${FORMATTER_OUTPUT_FILE}"
+}
+trap cleanup EXIT
 
-# Usage: validate_timeout (ensures timeout is within acceptable range)
-validate_timeout() {
-  local timeout_option
-  timeout_option=$(plugin_read_config TIMEOUT "")
-  if [ -n "${timeout_option}" ]; then
-    if [[ "$timeout_option" -lt 1 || "$timeout_option" -gt 60 ]]; then
-      log_error "timeout must be between 1 and 60 seconds"
+# Build golangci-lint run command with all options
+build_lint_command() {
+  local -a cmd_args=("run")
+
+  local timeout
+  timeout=$(plugin_read_config TIMEOUT "")
+  if [[ -n "${timeout}" ]]; then
+    log_debug "Adding timeout: ${timeout}"
+    cmd_args+=("--timeout" "${timeout}")
+  fi
+
+  local config
+  config=$(plugin_read_config CONFIG "")
+  if [[ -n "${config}" ]]; then
+    log_debug "Adding config file: ${config}"
+    cmd_args+=("--config" "${config}")
+  fi
+
+  local issues_exit_code
+  issues_exit_code=$(plugin_read_config ISSUES_EXIT_CODE "1")
+  log_debug "Setting issues exit code: ${issues_exit_code}"
+  cmd_args+=("--issues-exit-code" "${issues_exit_code}")
+
+  local cache_dir
+  cache_dir=$(plugin_read_config CACHE_DIR "")
+  if [[ -n "${cache_dir}" ]]; then
+    log_debug "Adding cache directory: ${cache_dir}"
+    cmd_args+=("--cache-dir" "${cache_dir}")
+  fi
+
+  log_debug "Built lint command: ${cmd_args[*]}"
+  echo "${cmd_args[@]}"
+}
+
+build_fmt_command() {
+  local -a cmd_args=("fmt" "--diff")
+  log_debug "Built fmt command: ${cmd_args[*]}"
+  echo "${cmd_args[@]}"
+}
+
+# Execute golangci-lint command (with or without Docker)
+execute_golangci_lint() {
+  local use_docker
+  use_docker=$(plugin_read_config USE_DOCKER "true")
+
+  local working_dir
+  working_dir=$(plugin_read_config WORKING_DIRECTORY "")
+
+  if [[ "${use_docker}" == "true" ]]; then
+    local docker_image
+    docker_image=$(plugin_read_config DOCKER_IMAGE "golangci/golangci-lint:latest")
+
+    log_info "Using Docker image: ${docker_image}"
+
+    local -a docker_cmd=("docker" "run" "--rm")
+
+    # Mount current directory
+    local mount_path="${PWD}"
+    if [[ -n "${working_dir}" ]]; then
+      log_debug "Using working directory: ${working_dir}"
+      mount_path="${working_dir}"
+    fi
+    log_debug "Mounting ${mount_path} to /app"
+    docker_cmd+=("-v" "${mount_path}:/app" "-w" "/app")
+
+    # Mount cache directory
+    local cache_dir
+    cache_dir=$(plugin_read_config CACHE_DIR "")
+    if [[ -n "${cache_dir}" ]]; then
+      log_debug "Cache directory configured: ${cache_dir}"
+      # Only create directory if it doesn't exist and we can write
+      if [[ ! -d "${cache_dir}" ]]; then
+        log_debug "Creating cache directory: ${cache_dir}"
+        mkdir -p "${cache_dir}" 2>/dev/null || log_warning "Could not create cache directory: ${cache_dir}"
+      fi
+      # Only mount if directory exists
+      if [[ -d "${cache_dir}" ]]; then
+        log_debug "Mounting cache directory: ${cache_dir}"
+        docker_cmd+=("-v" "${cache_dir}:/cache")
+      else
+        log_debug "Cache directory does not exist, skipping mount"
+      fi
+    fi
+
+    docker_cmd+=("${docker_image}" "golangci-lint" "$@")
+
+    log_debug "Executing: ${docker_cmd[*]}"
+    "${docker_cmd[@]}"
+  else
+    log_info "Using golangci-lint from PATH"
+
+    if ! command_exists golangci-lint; then
+      log_error "golangci-lint not found in PATH. Install it or set use_docker: true"
       exit 1
     fi
+
+    if [[ -n "${working_dir}" ]]; then
+      log_debug "Changing to working directory: ${working_dir}"
+      cd "${working_dir}"
+    fi
+
+    log_debug "Executing: golangci-lint $*"
+    golangci-lint "$@"
   fi
+}
+
+run_linter() {
+  echo "--- :golang: Running golangci-lint"
+
+  local lint_cmd
+  # shellcheck disable=SC2046
+  lint_cmd=$(build_lint_command)
+
+  log_info "Running: golangci-lint ${lint_cmd}"
+
+  # shellcheck disable=SC2086
+  if execute_golangci_lint ${lint_cmd} 2>&1 | tee "${LINTER_OUTPUT_FILE}"; then
+    LINTER_EXIT_CODE=0
+    log_success "Linting completed successfully"
+  else
+    LINTER_EXIT_CODE=$?
+    log_warning "Linting found issues (exit code: ${LINTER_EXIT_CODE})"
+  fi
+}
+
+run_formatter() {
+  echo "--- :art: Checking Go code formatting"
+
+  local fmt_cmd
+  # shellcheck disable=SC2046
+  fmt_cmd=$(build_fmt_command)
+
+  log_info "Running: golangci-lint ${fmt_cmd}"
+
+  # shellcheck disable=SC2086
+  if execute_golangci_lint ${fmt_cmd} 2>&1 | tee "${FORMATTER_OUTPUT_FILE}"; then
+    FORMATTER_EXIT_CODE=0
+    log_success "Formatting check completed successfully"
+  else
+    FORMATTER_EXIT_CODE=$?
+    log_warning "Formatting issues found (exit code: ${FORMATTER_EXIT_CODE})"
+  fi
+}
+
+create_linter_annotation() {
+  local output
+  output=$(<"${LINTER_OUTPUT_FILE}")
+
+  local style="success"
+  local title="golangci-lint: Passed"
+
+  if [[ ${LINTER_EXIT_CODE} -ne 0 ]]; then
+    style="error"
+    title="golangci-lint: Found Issues"
+  fi
+
+  local annotation_body
+  annotation_body=$(cat <<EOF
+### ${title}
+
+\`\`\`
+${output}
+\`\`\`
+EOF
+)
+
+  echo "${annotation_body}" | buildkite-agent annotate --style "${style}" --context "golangci-lint"
+  log_info "Created annotation for linter results"
+}
+
+create_formatter_annotation() {
+  local output
+  output=$(<"${FORMATTER_OUTPUT_FILE}")
+
+  local style="success"
+  local title="golangci-lint fmt: Passed"
+
+  if [[ ${FORMATTER_EXIT_CODE} -ne 0 ]]; then
+    style="error"
+    title="golangci-lint fmt: Formatting Issues Found"
+  fi
+
+  local annotation_body
+  annotation_body=$(cat <<EOF
+### ${title}
+
+\`\`\`diff
+${output}
+\`\`\`
+EOF
+)
+
+  echo "${annotation_body}" | buildkite-agent annotate --style "${style}" --context "golangci-lint-fmt"
+  log_info "Created annotation for formatter results"
+}
+
+handle_exit_status() {
+  log_debug "Evaluating exit status - Linter: ${LINTER_EXIT_CODE}, Formatter: ${FORMATTER_EXIT_CODE}"
+
+  local ignore_linter_errors
+  ignore_linter_errors=$(plugin_read_config IGNORE_LINTER_ERRORS "false")
+
+  local ignore_formatter_errors
+  ignore_formatter_errors=$(plugin_read_config IGNORE_FORMATTER_ERRORS "false")
+
+  local run_formatter_enabled
+  run_formatter_enabled=$(plugin_read_config RUN_FORMATTER "false")
+
+  local final_exit_code=0
+
+  # Check linter exit code
+  if [[ ${LINTER_EXIT_CODE} -ne 0 ]]; then
+    log_debug "Linter exited with non-zero code: ${LINTER_EXIT_CODE}"
+    if [[ "${ignore_linter_errors}" == "true" ]]; then
+      log_warning "Linter errors ignored due to ignore_linter_errors: true"
+    else
+      log_error "Linter failed with exit code ${LINTER_EXIT_CODE}"
+      final_exit_code=${LINTER_EXIT_CODE}
+    fi
+  else
+    log_debug "Linter exited successfully"
+  fi
+
+  # Check formatter exit code if formatter was run
+  if [[ "${run_formatter_enabled}" == "true" ]] && [[ ${FORMATTER_EXIT_CODE} -ne 0 ]]; then
+    log_debug "Formatter exited with non-zero code: ${FORMATTER_EXIT_CODE}"
+    if [[ "${ignore_formatter_errors}" == "true" ]]; then
+      log_warning "Formatter errors ignored due to ignore_formatter_errors: true"
+    else
+      log_error "Formatter check failed with exit code ${FORMATTER_EXIT_CODE}"
+      final_exit_code=${FORMATTER_EXIT_CODE}
+    fi
+  elif [[ "${run_formatter_enabled}" == "true" ]]; then
+    log_debug "Formatter exited successfully"
+  fi
+
+  log_debug "Final exit code will be: ${final_exit_code}"
+
+  if [[ ${final_exit_code} -eq 0 ]]; then
+    log_success "All checks passed"
+  fi
+
+  exit "${final_exit_code}"
 }
 
 main() {
@@ -34,57 +273,60 @@ main() {
   setup_error_trap
   enable_debug_if_requested
 
+  log_debug "=== golangci-lint plugin starting ==="
+
   # Get configuration
-  local mandatory_option
-  mandatory_option=$(plugin_read_config MANDATORY "")
-  validate_required_config "mandatory option" "${mandatory_option}"
+  local use_docker
+  use_docker=$(plugin_read_config USE_DOCKER "true")
+  log_debug "Configuration: use_docker=${use_docker}"
 
-  local optional_option
-  optional_option=$(plugin_read_config OPTIONAL "default")
+  local run_formatter_enabled
+  run_formatter_enabled=$(plugin_read_config RUN_FORMATTER "false")
+  log_debug "Configuration: run_formatter=${run_formatter_enabled}"
 
-  # Validate configuration
-  validate_timeout
+  local create_annotations
+  create_annotations=$(plugin_read_config CREATE_ANNOTATIONS "true")
+  log_debug "Configuration: create_annotations=${create_annotations}"
 
-  echo "--- :hammer: Running plugin"
+  local ignore_linter_errors
+  ignore_linter_errors=$(plugin_read_config IGNORE_LINTER_ERRORS "false")
+  log_debug "Configuration: ignore_linter_errors=${ignore_linter_errors}"
 
-  log_info "Running plugin with options:"
-  log_info "mandatory: ${mandatory_option}"
-  log_info "optional: ${optional_option}"
+  local ignore_formatter_errors
+  ignore_formatter_errors=$(plugin_read_config IGNORE_FORMATTER_ERRORS "false")
+  log_debug "Configuration: ignore_formatter_errors=${ignore_formatter_errors}"
 
-  # Handle numbers array
-  if plugin_read_list_into_result NUMBERS; then
-    local numbers_display
-    numbers_display=$(array_join ", " "${result[@]}")
-    log_info "numbers: ${numbers_display}"
+  if [[ "${use_docker}" == "true" ]]; then
+    log_debug "Checking for docker dependency"
+    check_dependencies docker
   fi
 
-  # Handle enabled boolean
-  local enabled_option
-  enabled_option=$(plugin_read_config ENABLED "false")
-  log_info "enabled: ${enabled_option}"
+  log_debug "Starting linter execution"
+  run_linter
 
-  # Handle config object
-  local config_host
-  config_host=$(plugin_read_config CONFIG_HOST "")
-  if [[ -n "${config_host}" ]]; then
-    local config_port config_ssl
-    config_port=$(plugin_read_config CONFIG_PORT "1234")
-    config_ssl=$(plugin_read_config CONFIG_SSL "true")
-
-    log_info "config.host: ${config_host}"
-    log_info "config.port: ${config_port}"
-    log_info "config.ssl: ${config_ssl}"
+  if [[ "${run_formatter_enabled}" == "true" ]]; then
+    log_debug "Starting formatter execution"
+    run_formatter
   fi
 
-  # Handle timeout number (already validated above)
-  local timeout_option
-  timeout_option=$(plugin_read_config TIMEOUT "")
-  if [[ -n "${timeout_option}" ]]; then
-    log_info "timeout: ${timeout_option}"
+  # Create annotations if enabled
+  if [[ "${create_annotations}" == "true" ]]; then
+    if command_exists buildkite-agent; then
+      log_debug "Creating annotations"
+      create_linter_annotation
+
+      if [[ "${run_formatter_enabled}" == "true" ]]; then
+        create_formatter_annotation
+      fi
+    else
+      log_warning "buildkite-agent not found, skipping annotation creation"
+    fi
+  else
+    log_debug "Annotations disabled, skipping"
   fi
 
-  # Your main plugin logic here
-  log_success "Plugin executed successfully"
+  log_debug "Handling final exit status"
+  handle_exit_status
 }
 
 main "$@"
