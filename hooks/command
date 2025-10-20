@@ -24,9 +24,8 @@ cleanup() {
 trap cleanup EXIT
 
 # Filter Docker noise from output for cleaner annotations
-# This is a bit janky maybe?
 filter_docker_noise() {
-  grep -vE '(Unable to find image|Pulling from|Pulling fs layer|Waiting|Downloading|Download complete|Extracting|Pull complete|Digest: sha256:|Status: Downloaded|Status: Image is up to date|\[INFO\]: Using Docker image:)' || true
+  command grep -vE '(Unable to find image|Pulling from|Pulling fs layer|Waiting|Downloading|Download complete|Extracting|Pull complete|Digest: sha256:|Status: Downloaded|Status: Image is up to date|\[INFO\]: Using Docker image:)' || true
 }
 
 # Build golangci-lint run command with all options
