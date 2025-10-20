@@ -258,18 +258,6 @@ When `ignore_linter_errors` or `ignore_formatter_errors` is `true`, the step wil
 docker run -it --rm -v "$PWD:/plugin:ro" buildkite/plugin-tester
 ```
 
-### Validate plugin structure
-
-```bash
-docker run -it --rm -v "$PWD:/plugin:ro" buildkite/plugin-linter --id golangci-lint --path /plugin
-```
-
-### Run shellcheck
-
-```bash
-shellcheck hooks/* tests/* lib/*.bash
-```
-
 ## Contributing
 
 1. Fork the repository
