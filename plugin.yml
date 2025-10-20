@@ -13,6 +13,10 @@ configuration:
       type: string
       description: "Docker image to use for golangci-lint. Defaults to `golangci/golangci-lint:latest`."
       default: "golangci/golangci-lint:latest"
+    mount_git:
+      type: boolean
+      description: "Mount .git directory into Docker container. Enables VCS stamping and git-based linters. Defaults to `true`."
+      default: true
     ignore_linter_errors:
       type: boolean
       description: "Whether to ignore linter errors and allow the step to pass. Defaults to `false`."
