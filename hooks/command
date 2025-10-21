@@ -126,7 +126,7 @@ execute_golangci_lint() {
       fi
     fi
 
-    docker_cmd+=("${docker_image}" "sh" "-c" "git config --global --add safe.directory /app && golangci-lint $*")
+    docker_cmd+=("${docker_image}" "sh" "-c" "git config --global --add safe.directory /app 2>/dev/null || true; exec golangci-lint \"\$@\"" "--" "$@")
 
     log_debug "Executing: ${docker_cmd[*]}"
     "${docker_cmd[@]}"
