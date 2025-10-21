@@ -25,7 +25,7 @@ trap cleanup EXIT
 
 # Filter Docker noise from output for cleaner annotations
 filter_docker_noise() {
-  command grep -vE '(Unable to find image|Pulling from|Pulling fs layer|Waiting|Downloading|Download complete|Extracting|Pull complete|Digest: sha256:|Status: Downloaded|Status: Image is up to date|\[INFO\]: Using Docker image:)' || true
+  command grep -vE '(Unable to find image|Pulling from|Pulling fs layer|Waiting|Downloading|Download complete|Extracting|Pull complete|Digest: sha256:|Status: Downloaded|Status: Image is up to date|\[INFO\]: Using Docker image:|Already exists)' || true
 }
 
 # Build golangci-lint run command with all options
@@ -98,8 +98,8 @@ execute_golangci_lint() {
     mount_git=$(plugin_read_config MOUNT_GIT "true")
     if [[ "${mount_git}" == "true" ]]; then
       if [[ -d "${mount_path}/.git" ]]; then
-        log_debug "Mounting .git directory (read-only)"
-        docker_cmd+=("-v" "${mount_path}/.git:/app/.git:ro")
+        log_debug "Mounting .git directory"
+        docker_cmd+=("-v" "${mount_path}/.git:/app/.git")
       else
         log_debug ".git directory not found, skipping git mount"
       fi
