@@ -18,6 +18,7 @@ FORMATTER_EXIT_CODE=0
 
 # Clean up temporary files on exit
 # shellcheck disable=SC2317
+# shellcheck disable=SC2329
 cleanup() {
   rm -f "${LINTER_OUTPUT_FILE}" "${FORMATTER_OUTPUT_FILE}"
 }
