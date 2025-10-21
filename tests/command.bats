@@ -19,7 +19,7 @@ setup() {
 
 @test "Runs golangci-lint with Docker by default" {
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'Running linter'"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'Running linter'"
 
   run "$PWD"/hooks/command
 
@@ -34,7 +34,7 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_DOCKER_IMAGE='golangci/golangci-lint:v1.55.2'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:v1.55.2 golangci-lint run --issues-exit-code 1 : echo 'Running linter'"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:v1.55.2 golangci-lint run --issues-exit-code 1 : echo 'Running linter'"
 
   run "$PWD"/hooks/command
 
@@ -71,7 +71,7 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_TIMEOUT='5m'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --timeout 5m --issues-exit-code 1 : echo 'Running with timeout'"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --timeout 5m --issues-exit-code 1 : echo 'Running with timeout'"
 
   run "$PWD"/hooks/command
 
@@ -84,7 +84,7 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_CONFIG='.golangci.yml'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --config .golangci.yml --issues-exit-code 1 : echo 'Running with config'"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --config .golangci.yml --issues-exit-code 1 : echo 'Running with config'"
 
   run "$PWD"/hooks/command
 
@@ -97,7 +97,7 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_ISSUES_EXIT_CODE='0'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 0 : echo 'Running with custom exit code'"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 0 : echo 'Running with custom exit code'"
 
   run "$PWD"/hooks/command
 
@@ -113,7 +113,7 @@ setup() {
   mkdir -p "/tmp/golangci-lint-$$"
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app -v /tmp/golangci-lint-$$:/cache golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 --cache-dir /tmp/golangci-lint-$$ : echo 'Running with cache dir'"
+    "run --rm -v ${PWD}:/app -w /app -v /tmp/golangci-lint-$$:/cache -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 --cache-dir /tmp/golangci-lint-$$ : echo 'Running with cache dir'"
 
   run "$PWD"/hooks/command
 
@@ -128,8 +128,8 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_RUN_FORMATTER='true'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'Running linter'" \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint fmt --diff : echo 'Running formatter'"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'Running linter'" \
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint fmt --diff : echo 'Running formatter'"
 
   run "$PWD"/hooks/command
 
@@ -141,7 +141,7 @@ setup() {
 
 @test "Fails when linter finds issues and ignore_linter_errors is false" {
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : exit 1"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : exit 1"
 
   run "$PWD"/hooks/command
 
@@ -155,7 +155,7 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_IGNORE_LINTER_ERRORS='true'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : exit 1"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : exit 1"
 
   run "$PWD"/hooks/command
 
@@ -169,8 +169,8 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_RUN_FORMATTER='true'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'Linter passed'" \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint fmt --diff : exit 1"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'Linter passed'" \
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint fmt --diff : exit 1"
 
   run "$PWD"/hooks/command
 
@@ -185,8 +185,8 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_IGNORE_FORMATTER_ERRORS='true'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'Linter passed'" \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint fmt --diff : exit 1"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'Linter passed'" \
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint fmt --diff : exit 1"
 
   run "$PWD"/hooks/command
 
@@ -200,7 +200,7 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_CREATE_ANNOTATIONS='true'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'No issues found'"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'No issues found'"
 
   stub buildkite-agent \
     "annotate --style success --context golangci-lint : echo 'Annotation created'"
@@ -219,8 +219,8 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_CREATE_ANNOTATIONS='true'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'No issues found'" \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint fmt --diff : echo 'No formatting issues'"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'No issues found'" \
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint fmt --diff : echo 'No formatting issues'"
 
   stub buildkite-agent \
     "annotate --style success --context golangci-lint : echo 'Linter annotation created'" \
@@ -240,7 +240,7 @@ setup() {
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_CREATE_ANNOTATIONS='true'
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'No issues found'"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'No issues found'"
 
   run "$PWD"/hooks/command
 
@@ -260,7 +260,7 @@ setup() {
   mkdir -p "/tmp/golangci-lint-combined-$$"
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app -v /tmp/golangci-lint-combined-$$:/cache golangci/golangci-lint:latest golangci-lint run --timeout 10m --config .golangci.yml --issues-exit-code 2 --cache-dir /tmp/golangci-lint-combined-$$ : echo 'Running with all options'"
+    "run --rm -v ${PWD}:/app -w /app -v /tmp/golangci-lint-combined-$$:/cache -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --timeout 10m --config .golangci.yml --issues-exit-code 2 --cache-dir /tmp/golangci-lint-combined-$$ : echo 'Running with all options'"
 
   run "$PWD"/hooks/command
 
@@ -273,7 +273,7 @@ setup() {
 
 @test "Succeeds when linter passes" {
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'No issues found'"
+    "run --rm -v ${PWD}:/app -w /app -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 : echo 'No issues found'"
 
   run "$PWD"/hooks/command
 
