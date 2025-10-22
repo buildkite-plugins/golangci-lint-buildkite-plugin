@@ -263,7 +263,7 @@ When `ignore_linter_errors` or `ignore_formatter_errors` is `true`, the step wil
 ### Run tests
 
 ```bash
-docker run -it --rm -v "$PWD:/plugin:ro" buildkite/plugin-tester
+docker run --rm -v "$PWD:/plugin:ro" buildkite/plugin-tester
 ```
 
 ## Contributing
