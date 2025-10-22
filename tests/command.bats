@@ -10,7 +10,6 @@ setup() {
   # Set default environment variables
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_USE_DOCKER='true'
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_DOCKER_IMAGE='golangci/golangci-lint:latest'
-  export BUILDKITE_PLUGIN_GOLANGCI_LINT_MOUNT_GIT='false'  # Disable for tests to simplify stubs
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_IGNORE_LINTER_ERRORS='false'
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_CREATE_ANNOTATIONS='false'  # Disable for most tests
   export BUILDKITE_PLUGIN_GOLANGCI_LINT_RUN_FORMATTER='false'

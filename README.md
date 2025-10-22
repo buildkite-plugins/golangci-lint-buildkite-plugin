@@ -33,14 +33,6 @@ Docker image to use for golangci-lint.
 
 **Default:** `golangci/golangci-lint:latest`
 
-#### `mount_git` (boolean)
-
-Mount the `.git` directory into the Docker container (read-only). This enables VCS stamping in Go builds and git-based linters.
-
-**Default:** `true`
-
-**Note:** If you see errors like `error obtaining VCS status: exit status 128`, ensure this is set to `true` (the default) or set to `false` to disable git access.
-
 ### Linter Options
 
 #### `ignore_linter_errors` (boolean)

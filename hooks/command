@@ -94,20 +94,6 @@ execute_golangci_lint() {
     log_debug "Mounting ${mount_path} to /app"
     docker_cmd+=("-v" "${mount_path}:/app" "-w" "/app")
 
-    # Mount .git directory if enabled
-    local mount_git
-    mount_git=$(plugin_read_config MOUNT_GIT "true")
-    if [[ "${mount_git}" == "true" ]]; then
-      if [[ -d "${mount_path}/.git" ]]; then
-        log_debug "Mounting .git directory"
-        docker_cmd+=("-v" "${mount_path}/.git:/app/.git")
-      else
-        log_debug ".git directory not found, skipping git mount"
-      fi
-    else
-      log_debug "Git mounting disabled"
-    fi
-
     # Mount cache directory
     local cache_dir
     cache_dir=$(plugin_read_config CACHE_DIR "")
