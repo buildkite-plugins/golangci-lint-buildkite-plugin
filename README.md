@@ -262,7 +262,7 @@ When `ignore_linter_errors` or `ignore_formatter_errors` is `true`, the step wil
 
 | Elastic Stack | Agent Stack K8s | Hosted (Mac) | Hosted (Linux) | Notes |
 | :-----------: | :-------------: | :----------: | :------------: | :---- |
-|       ✅       |        ⚠️        |      ⚠️       |       ✅        | **K8s**: Requires use of Docker-in-Docker or for a `golangci-lint` binary to be available in `PATH` <br> **Hosted (Mac)**: Requires a `golangci-lint` binary to be available in `PATH` as Docker is unavailable.   |
+|       ✅       |        ⚠️        |      ⚠️       |       ✅        | **K8s**: Requires use of Docker-in-Docker or for `use_docker` to be set to `false` and a `golangci-lint` binary to be available in `PATH` <br> **Hosted (Mac)**: Requires a `golangci-lint` binary to be available in `PATH` and `use_docker` set to `false` as Docker is unavailable.   |
 
 - ✅ Fully supported (all combinations of attributes have been tested to pass)
 - ⚠️ Partially supported (some combinations cause errors/issues)
