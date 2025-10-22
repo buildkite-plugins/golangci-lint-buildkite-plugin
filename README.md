@@ -258,6 +258,15 @@ The plugin respects golangci-lint exit codes:
 
 When `ignore_linter_errors` or `ignore_formatter_errors` is `true`, the step will always exit with 0 regardless of issues found.
 
+## Compatibility
+
+| Elastic Stack | Agent Stack K8s | Hosted (Mac) | Hosted (Linux) | Notes |
+| :-----------: | :-------------: | :----------: | :------------: | :---- |
+|       ✅       |        ⚠️        |      ⚠️       |       ✅        | K8s: Will require use of Docker-in-Docker or a `golangci-lint` binary in `PATH` \n Hosted (Mac) will require a `golangci-lint` binary in `PATH` as Docker is unavailable.   |
+
+- ✅ Fully supported (all combinations of attributes have been tested to pass)
+- ⚠️ Partially supported (some combinations cause errors/issues)
+
 ## Development
 
 ### Run tests
