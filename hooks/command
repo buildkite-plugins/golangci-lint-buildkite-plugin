@@ -99,17 +99,34 @@ execute_golangci_lint() {
     cache_dir=$(plugin_read_config CACHE_DIR "")
     if [[ -n "${cache_dir}" ]]; then
       log_debug "Cache directory configured: ${cache_dir}"
-      # Only create directory if it doesn't exist and we can write
-      if [[ ! -d "${cache_dir}" ]]; then
-        log_debug "Creating cache directory: ${cache_dir}"
-        mkdir -p "${cache_dir}" 2>/dev/null || log_warning "Could not create cache directory: ${cache_dir}"
-      fi
-      # Only mount if directory exists
-      if [[ -d "${cache_dir}" ]]; then
-        log_debug "Mounting cache directory: ${cache_dir}"
-        docker_cmd+=("-v" "${cache_dir}:/cache")
+
+      # Check if path is absolute
+      if [[ "${cache_dir}" = /* ]]; then
+        # Absolute path: create if needed and mount to same path
+        if [[ ! -d "${cache_dir}" ]]; then
+          log_debug "Creating cache directory: ${cache_dir}"
+          mkdir -p "${cache_dir}" 2>/dev/null || log_warning "Could not create cache directory: ${cache_dir}"
+        fi
+        if [[ -d "${cache_dir}" ]]; then
+          log_debug "Mounting cache directory to same path: ${cache_dir}"
+          docker_cmd+=("-v" "${cache_dir}:${cache_dir}")
+        else
+          log_debug "Cache directory does not exist, skipping mount"
+        fi
       else
-        log_debug "Cache directory does not exist, skipping mount"
+        # Relative path: convert to absolute and mount to /app/<relative-path>
+        local abs_cache_dir="${mount_path}/${cache_dir}"
+        log_debug "Converting relative cache path to absolute: ${abs_cache_dir}"
+        if [[ ! -d "${abs_cache_dir}" ]]; then
+          log_debug "Creating cache directory: ${abs_cache_dir}"
+          mkdir -p "${abs_cache_dir}" 2>/dev/null || log_warning "Could not create cache directory: ${abs_cache_dir}"
+        fi
+        if [[ -d "${abs_cache_dir}" ]]; then
+          log_debug "Mounting cache directory: ${abs_cache_dir} -> /app/${cache_dir}"
+          docker_cmd+=("-v" "${abs_cache_dir}:/app/${cache_dir}")
+        else
+          log_debug "Cache directory does not exist, skipping mount"
+        fi
       fi
     fi
 
