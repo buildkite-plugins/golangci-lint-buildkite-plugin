@@ -1,0 +1,37 @@
+# Example golangci-lint configuration file
+# Copy this to .golangci.yml and customize for your project
+# See https://golangci-lint.run/docs/configuration/ for all options
+
+version: "2"
+linters:
+  enable:
+    - nolintlint
+    - tparallel
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
