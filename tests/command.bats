@@ -112,13 +112,34 @@ setup() {
   mkdir -p "/tmp/golangci-lint-$$"
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app -v /tmp/golangci-lint-$$:/cache -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 --cache-dir /tmp/golangci-lint-$$ : echo 'Running with cache dir'"
+    "run --rm -v ${PWD}:/app -w /app -v /tmp/golangci-lint-$$:/tmp/golangci-lint-$$ -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 --cache-dir /tmp/golangci-lint-$$ : echo 'Running with cache dir'"
 
   run "$PWD"/hooks/command
 
   assert_success
 
   rm -rf "/tmp/golangci-lint-$$"
+
+  unstub docker
+}
+
+@test "Passes relative cache_dir flag when specified" {
+  # Use a temporary directory for testing relative paths
+  export BUILDKITE_PLUGIN_GOLANGCI_LINT_WORKING_DIRECTORY="/tmp/test-working-dir-$$"
+  export BUILDKITE_PLUGIN_GOLANGCI_LINT_CACHE_DIR=".cache/golangci-lint"
+
+  # Create the working directory and cache directory
+  mkdir -p "/tmp/test-working-dir-$$/.cache/golangci-lint"
+
+  stub docker \
+    "run --rm -v /tmp/test-working-dir-$$:/app -w /app -v /tmp/test-working-dir-$$/.cache/golangci-lint:/app/.cache/golangci-lint -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --issues-exit-code 1 --cache-dir .cache/golangci-lint : echo 'Running with relative cache dir'"
+
+  run "$PWD"/hooks/command
+
+  assert_success
+
+  # Clean up
+  rm -rf "/tmp/test-working-dir-$$"
 
   unstub docker
 }
@@ -259,7 +280,7 @@ setup() {
   mkdir -p "/tmp/golangci-lint-combined-$$"
 
   stub docker \
-    "run --rm -v ${PWD}:/app -w /app -v /tmp/golangci-lint-combined-$$:/cache -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --timeout 10m --config .golangci.yml --issues-exit-code 2 --cache-dir /tmp/golangci-lint-combined-$$ : echo 'Running with all options'"
+    "run --rm -v ${PWD}:/app -w /app -v /tmp/golangci-lint-combined-$$:/tmp/golangci-lint-combined-$$ -e GOFLAGS=-buildvcs=false golangci/golangci-lint:latest golangci-lint run --timeout 10m --config .golangci.yml --issues-exit-code 2 --cache-dir /tmp/golangci-lint-combined-$$ : echo 'Running with all options'"
 
   run "$PWD"/hooks/command
 
