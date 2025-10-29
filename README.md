@@ -69,9 +69,13 @@ Exit code when issues are found. Allows for control of soft_fail steps. Maps to 
 
 Directory to use for golangci-lint cache. Maps to `--cache-dir` flag.
 
+**Absolute paths** (e.g., `/tmp/golangci-lint-cache`) are mounted to the same path in the container.
+**Relative paths** (e.g., `.cache/golangci-lint`) are resolved relative to the working directory and mounted under `/app/` in the container.
+
 See [golangci-lint cache documentation](https://golangci-lint.run/docs/configuration/cli/#cache) for more details.
 
-**Example:** `.cache/golangci-lint`
+**Example (absolute):** `/tmp/golangci-lint-cache`
+**Example (relative):** `.cache/golangci-lint`
 
 ### Formatter Options
 
